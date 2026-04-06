@@ -5,70 +5,136 @@
 <title>Upload to Firebase — Lush Beauty Mart</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',sans-serif;max-width:580px;margin:50px auto;padding:20px;background:#f9f0ec}
+body{font-family:'Segoe UI',sans-serif;max-width:600px;margin:40px auto;padding:20px;background:#f9f0ec}
 .box{background:#fff;padding:32px;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.1)}
 h2{color:#1c1410;font-size:22px;margin-bottom:8px}
-p{color:#8a6a5a;font-size:13px;margin-bottom:20px;line-height:1.6}
-.status{padding:14px 16px;border-radius:6px;margin:16px 0;font-size:14px;line-height:1.6}
+.sub{color:#8a6a5a;font-size:13px;margin-bottom:20px;line-height:1.6}
+.st{padding:14px 16px;border-radius:6px;margin:14px 0;font-size:14px;line-height:1.6;font-weight:500}
 .ok{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7}
 .err{background:#ffebee;color:#c62828;border:1px solid #ef9a9a}
 .info{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
-.bar{height:10px;background:#f0e6da;border-radius:5px;margin:12px 0;overflow:hidden}
-.fill{height:100%;background:#c9506a;border-radius:5px;transition:width .4s;width:0}
-button{background:#c9506a;color:#fff;border:none;padding:14px;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;width:100%;margin-top:8px;transition:.2s}
+.bar{height:12px;background:#f0e6da;border-radius:6px;margin:12px 0;overflow:hidden}
+.fill{height:100%;background:#c9506a;border-radius:6px;transition:width .3s;width:0}
+button{background:#c9506a;color:#fff;border:none;padding:15px;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;width:100%;margin-top:8px}
 button:hover{background:#b03d57}
-button:disabled{opacity:.5;cursor:not-allowed}
-.log{font-size:12.5px;color:#666;margin-top:12px;line-height:1.9}
+button:disabled{opacity:.45;cursor:not-allowed}
+.log{font-size:12.5px;color:#555;margin-top:14px;line-height:2}
+code{background:#f5f0ec;padding:2px 6px;border-radius:3px;font-size:12px}
 </style>
 </head>
 <body>
 <div class="box">
   <h2>🔥 Upload Products to Firebase</h2>
-  <p>Uploads all products to Firebase as ONE document (fast, 3-5 seconds). Every browser will then see the same data. <strong>Run once only.</strong></p>
-  <div class="status info" id="st">Ready — click the button below.</div>
+  <p class="sub">Uses the <strong>Firestore REST API</strong> (direct HTTPS — no timeout). Uploads all products in ~5 seconds. <strong>Run once.</strong></p>
+
+  <div class="st info" id="st">Ready — click the button below.</div>
   <div class="bar"><div class="fill" id="fill"></div></div>
-  <button onclick="go()" id="btn">🔥 Upload Products to Firebase Now</button>
+  <button onclick="go()" id="btn">🔥 Upload All Products Now</button>
   <div class="log" id="log"></div>
 </div>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-const db = getFirestore(initializeApp({
-  apiKey:"AIzaSyC0ewsoKyf1bnsN1eW9j4DMObKPO9EECgo",
-  authDomain:"lush-beauty-mart.firebaseapp.com",
-  projectId:"lush-beauty-mart",
-  storageBucket:"lush-beauty-mart.firebasestorage.app",
-  messagingSenderId:"48725359774",
-  appId:"1:48725359774:web:0e243059e6f0f2542c0f8f"
-}));
-function st(msg,cls){const e=document.getElementById("st");e.innerHTML=msg;e.className="status "+cls;}
-function log(msg){document.getElementById("log").innerHTML+="<div>"+msg+"</div>";}
-function prog(p){document.getElementById("fill").style.width=p+"%";}
-window.go=async function(){
-  const btn=document.getElementById("btn");
-  btn.disabled=true; btn.textContent="⏳ Uploading...";
-  try {
-    st("⏳ Loading products.json...","info"); prog(15);
-    const res=await fetch("products.json");
-    if(!res.ok) throw new Error("Cannot load products.json");
-    const data=await res.json();
-    if(!Array.isArray(data)||!data.length) throw new Error("products.json is empty");
-    const kb=Math.round(JSON.stringify(data).length/1024);
-    log("✅ Found <strong>"+data.length+"</strong> products ("+kb+" KB)");
-    prog(40);
-    st("⏳ Saving to Firebase...","info");
-    log("☁️ Writing to Firestore...");
-    await setDoc(doc(db,"store","products"),{list:data});
-    prog(100);
-    st("✅ <strong>Done! "+data.length+" products uploaded.</strong><br>All browsers worldwide will now load from Firebase. You can close this page.","ok");
-    log("🌍 Store syncs across all browsers. Hidden products hidden everywhere.");
-    btn.textContent="✅ Complete!";
-  } catch(e) {
-    st("❌ "+e.message,"err");
-    log("Error: "+e.message);
-    btn.disabled=false; btn.textContent="🔄 Try Again"; prog(0);
+
+<script>
+var PROJECT = "lush-beauty-mart";
+var API_KEY = "AIzaSyC0ewsoKyf1bnsN1eW9j4DMObKPO9EECgo";
+
+function st(msg, cls) {
+  var e = document.getElementById("st");
+  e.innerHTML = msg; e.className = "st " + cls;
+}
+function log(msg) {
+  document.getElementById("log").innerHTML += "<div>" + msg + "</div>";
+}
+function prog(p) {
+  document.getElementById("fill").style.width = p + "%";
+}
+
+// Convert JS array/object to Firestore REST format
+function toFirestoreValue(val) {
+  if (val === null || val === undefined) return { nullValue: null };
+  if (typeof val === "boolean") return { booleanValue: val };
+  if (typeof val === "number") {
+    if (Number.isInteger(val)) return { integerValue: String(val) };
+    return { doubleValue: val };
   }
-};
+  if (typeof val === "string") return { stringValue: val };
+  if (Array.isArray(val)) {
+    return { arrayValue: { values: val.map(toFirestoreValue) } };
+  }
+  if (typeof val === "object") {
+    var fields = {};
+    Object.keys(val).forEach(function(k) {
+      fields[k] = toFirestoreValue(val[k]);
+    });
+    return { mapValue: { fields: fields } };
+  }
+  return { stringValue: String(val) };
+}
+
+function go() {
+  var btn = document.getElementById("btn");
+  btn.disabled = true;
+  btn.textContent = "⏳ Uploading...";
+
+  st("⏳ Loading products.json...", "info");
+  prog(10);
+
+  fetch("products.json")
+    .then(function(r) {
+      if (!r.ok) throw new Error("Cannot load products.json — is it deployed on Vercel?");
+      return r.json();
+    })
+    .then(function(data) {
+      if (!Array.isArray(data) || !data.length) throw new Error("products.json is empty or invalid");
+      var kb = Math.round(JSON.stringify(data).length / 1024);
+      log("✅ Loaded <strong>" + data.length + "</strong> products (" + kb + " KB)");
+      prog(30);
+      st("⏳ Converting and uploading via REST API...", "info");
+      log("🔄 Converting to Firestore format...");
+
+      // Build Firestore REST body
+      var body = JSON.stringify({
+        fields: {
+          list: toFirestoreValue(data)
+        }
+      });
+
+      log("📤 Sending to Firestore REST API (" + Math.round(body.length / 1024) + " KB request)...");
+      prog(50);
+
+      // Use PATCH (upsert) via REST — direct HTTPS, no WebSocket, no timeout
+      var url = "https://firestore.googleapis.com/v1/projects/" + PROJECT +
+                "/databases/(default)/documents/store/products?key=" + API_KEY;
+
+      return fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: body
+      });
+    })
+    .then(function(r) {
+      prog(90);
+      if (!r.ok) {
+        return r.text().then(function(t) {
+          throw new Error("Firestore error " + r.status + ": " + t.substring(0, 200));
+        });
+      }
+      return r.json();
+    })
+    .then(function(result) {
+      prog(100);
+      log("✅ Firestore confirmed: document written at <code>" + (result.name || "store/products") + "</code>");
+      st("✅ <strong>Upload complete!</strong> All browsers worldwide will now load products from Firebase.<br>Hidden products are hidden everywhere. You can close this page.", "ok");
+      log("🌍 Open your store in any browser — data syncs instantly.");
+      btn.textContent = "✅ Done!";
+    })
+    .catch(function(e) {
+      st("❌ Error: " + e.message, "err");
+      log("❌ " + e.message);
+      btn.disabled = false;
+      btn.textContent = "🔄 Try Again";
+      prog(0);
+    });
+}
 </script>
 </body>
 </html>
