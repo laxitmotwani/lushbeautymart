@@ -1352,8 +1352,8 @@ function loadProducts(callback) {
   } else {
     var done = false;
     var timer = setTimeout(function() {
-      if (!done) { done = true; fallbackToJson("Firebase timeout after 5s"); }
-    }, 5000);
+      if (!done) { done = true; fallbackToJson("Firebase timeout after 3s"); }
+    }, 3000);
     window.addEventListener("firebaseReady", function() {
       if (!done) { done = true; clearTimeout(timer); loadFromFirebase(); }
     }, { once: true });
