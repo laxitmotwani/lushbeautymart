@@ -1069,6 +1069,26 @@ var DEFS = [
 
 
 function getProds() { return lsParse("lbm_products", JSON.parse(JSON.stringify(DEFS))); }
+
+// Load products from Firebase into localStorage on admin startup
+function syncFromFirebase() {
+  function doSync() {
+    window._getDoc(window._doc(window._db, "store", "products"))
+      .then(function(snap) {
+        if (snap.exists()) {
+          var prods = snap.data().list || [];
+          if (prods.length) {
+            lsSet("lbm_products", JSON.stringify(prods));
+            renderDash();
+            console.log("✅ Admin synced " + prods.length + " products from Firebase");
+          }
+        }
+      })
+      .catch(function(e){ console.warn("Sync from Firebase failed:", e); });
+  }
+  if (window._firebaseReady) doSync();
+  else window.addEventListener("firebaseReady", doSync, { once: true });
+}
 function setProds(p){
   lsSet("lbm_products", JSON.stringify(p));
   function saveToCloud() {
@@ -1568,6 +1588,7 @@ function logout(){sessionStorage.removeItem("lbm_admin");window.location.href="a
   if(sv.ship)     document.getElementById("s-ship").value     = sv.ship;
   renderDash();
   setInterval(updateBadge, 10000);
+  syncFromFirebase(); // ← load latest products from Firebase on startup
 })();
 
 function addShadeRow(name, img) {
