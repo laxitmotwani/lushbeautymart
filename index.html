@@ -1267,7 +1267,15 @@ function setWish(w) { lsSet("lbm_wish",   JSON.stringify(w)); }
 function getOrders(){ try { return JSON.parse(lsGet("lbm_orders") || "[]"); } catch(e) { return []; } }
 function setOrders(o){ lsSet("lbm_orders", JSON.stringify(o)); }
 
+// Global product cache — populated from Firebase then used everywhere
+var _allProducts = null;
+
 function getProducts() {
+  // If Firebase already loaded products into cache, use that
+  if (_allProducts && _allProducts.length) {
+    return _allProducts.filter(function(x){ return !x.hidden; });
+  }
+  // Fallback: localStorage
   try {
     var r = lsGet("lbm_products");
     if (r) {
@@ -1288,32 +1296,81 @@ function loadProducts(callback) {
     return prods.slice().sort(function(a,b){ return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
   }
 
-  function tryFirebase() {
-    if (!window._firebaseReady) {
-      window.addEventListener("firebaseReady", tryFirebase, { once: true });
-      return;
-    }
+  function loadFromFirebase() {
     window._getDoc(window._doc(window._db, "store", "products"))
       .then(function(snap) {
         if (snap.exists()) {
           var prods = snap.data().list || [];
           if (prods.length) {
-            lsSet("lbm_products", JSON.stringify(prods));
-            callback(sortAndReturn(prods));
+            _allProducts = prods; // ← store globally
+            try { lsSet("lbm_products", JSON.stringify(prods)); } catch(e){}
+            callback(sortAndReturn(prods.filter(function(x){ return !x.hidden; })));
             return;
           }
         }
-        // No Firebase data yet — fall back to products.json
+        // No Firebase data — fall back to products.json
+        fetch("products.json")
+          .then(function(r){ return r.ok ? r.json() : Promise.reject("no file"); })
+          .then(function(data){
+            _allProducts = data;
+            try { lsSet("lbm_products", JSON.stringify(data)); } catch(e){}
+            callback(sortAndReturn(data.filter(function(x){ return !x.hidden; })));
+          })
+          .catch(function(){
+            var fb = getProducts();
+            _allProducts = fb;
+            callback(sortAndReturn(fb));
+          });
+      })
+      .catch(function(e) {
+        console.warn("Firebase load failed, using local:", e);
+        // Try products.json as backup
         fetch("products.json")
           .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-          .then(function(data){ lsSet("lbm_products", JSON.stringify(data)); callback(sortAndReturn(data)); })
-          .catch(function(){ callback(sortAndReturn(getProducts())); });
-      })
-      .catch(function() {
-        callback(sortAndReturn(getProducts()));
+          .then(function(data){
+            _allProducts = data;
+            callback(sortAndReturn(data.filter(function(x){ return !x.hidden; })));
+          })
+          .catch(function(){
+            var fb = getProducts();
+            _allProducts = fb;
+            callback(sortAndReturn(fb));
+          });
       });
   }
-  tryFirebase();
+
+  // Handle timing: module scripts run after DOMContentLoaded in some browsers
+  if (window._firebaseReady) {
+    loadFromFirebase();
+  } else {
+    // Set a timeout fallback so we never hang forever
+    var loaded = false;
+    var timer = setTimeout(function() {
+      if (!loaded) {
+        loaded = true;
+        console.warn("Firebase timeout — loading from products.json");
+        fetch("products.json")
+          .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+          .then(function(data){
+            _allProducts = data;
+            callback(sortAndReturn(data.filter(function(x){ return !x.hidden; })));
+          })
+          .catch(function(){
+            var fb = getProducts();
+            _allProducts = fb;
+            callback(sortAndReturn(fb));
+          });
+      }
+    }, 4000); // wait max 4 seconds for Firebase
+
+    window.addEventListener("firebaseReady", function() {
+      if (!loaded) {
+        loaded = true;
+        clearTimeout(timer);
+        loadFromFirebase();
+      }
+    }, { once: true });
+  }
 }
 
 var currentFilter = "All";
@@ -1332,7 +1389,10 @@ function searchProducts() { currentPage = 1; applyFilters(); }
 function applyFilters() {
   var wish = getWish();
   var q = (document.getElementById("searchBox") || {value:""}).value.toLowerCase();
-  var list = getProducts();
+  // Use global cache if available, otherwise getProducts()
+  var list = (_allProducts && _allProducts.length)
+    ? _allProducts.filter(function(x){ return !x.hidden; })
+    : getProducts();
   if (currentFilter !== "All") list = list.filter(function(p) { return p.cat === currentFilter; });
   if (q) list = list.filter(function(p) { return p.name.toLowerCase().indexOf(q) > -1 || (p.brand||"").toLowerCase().indexOf(q) > -1; });
   list = list.slice().sort(function(a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
