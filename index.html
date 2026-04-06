@@ -1267,15 +1267,7 @@ function setWish(w) { lsSet("lbm_wish",   JSON.stringify(w)); }
 function getOrders(){ try { return JSON.parse(lsGet("lbm_orders") || "[]"); } catch(e) { return []; } }
 function setOrders(o){ lsSet("lbm_orders", JSON.stringify(o)); }
 
-// Global product cache — populated from Firebase then used everywhere
-var _allProducts = null;
-
 function getProducts() {
-  // If Firebase already loaded products into cache, use that
-  if (_allProducts && _allProducts.length) {
-    return _allProducts.filter(function(x){ return !x.hidden; });
-  }
-  // Fallback: localStorage
   try {
     var r = lsGet("lbm_products");
     if (r) {
@@ -1288,87 +1280,87 @@ function getProducts() {
   return DEFAULTS;
 }
 
+// Global product cache — populated from Firebase, used by all filters
+var _allProducts = null;
+
 function loadProducts(callback) {
   var grid = document.getElementById("productGrid");
   if (grid) grid.innerHTML = '<div class="no-prods" style="opacity:.5">Loading products...</div>';
 
   function sortAndReturn(prods) {
-    return prods.slice().sort(function(a,b){ return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
+    return prods.slice().sort(function(a,b){
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    });
   }
 
-  function loadFromFirebase() {
-    window._getDoc(window._doc(window._db, "store", "products"))
-      .then(function(snap) {
-        if (snap.exists()) {
-          var prods = snap.data().list || [];
-          if (prods.length) {
-            _allProducts = prods; // ← store globally
-            try { lsSet("lbm_products", JSON.stringify(prods)); } catch(e){}
-            callback(sortAndReturn(prods.filter(function(x){ return !x.hidden; })));
-            return;
-          }
-        }
-        // No Firebase data — fall back to products.json
-        fetch("products.json")
-          .then(function(r){ return r.ok ? r.json() : Promise.reject("no file"); })
-          .then(function(data){
-            _allProducts = data;
-            try { lsSet("lbm_products", JSON.stringify(data)); } catch(e){}
-            callback(sortAndReturn(data.filter(function(x){ return !x.hidden; })));
-          })
-          .catch(function(){
-            var fb = getProducts();
-            _allProducts = fb;
-            callback(sortAndReturn(fb));
-          });
+  function fallbackToJson(reason) {
+    console.warn("Firebase unavailable (" + reason + "), loading products.json");
+    fetch("products.json")
+      .then(function(r){ return r.ok ? r.json() : Promise.reject("no file"); })
+      .then(function(data){
+        _allProducts = data;
+        try { lsSet("lbm_products", JSON.stringify(data)); } catch(e){}
+        callback(sortAndReturn(data.filter(function(x){ return !x.hidden; })));
       })
-      .catch(function(e) {
-        console.warn("Firebase load failed, using local:", e);
-        // Try products.json as backup
-        fetch("products.json")
-          .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-          .then(function(data){
-            _allProducts = data;
-            callback(sortAndReturn(data.filter(function(x){ return !x.hidden; })));
-          })
-          .catch(function(){
-            var fb = getProducts();
-            _allProducts = fb;
-            callback(sortAndReturn(fb));
-          });
+      .catch(function(){
+        var fb = getProducts();
+        _allProducts = fb;
+        callback(sortAndReturn(fb));
       });
   }
 
-  // Handle timing: module scripts run after DOMContentLoaded in some browsers
+  function loadFromFirebase() {
+    // Step 1: read metadata to find chunk count
+    window._getDoc(window._doc(window._db, "store", "products_meta"))
+      .then(function(metaSnap) {
+        if (metaSnap.exists()) {
+          // ── Chunked storage ──────────────────────────
+          var nChunks = metaSnap.data().chunks || 1;
+          var promises = [];
+          for (var i = 0; i < nChunks; i++) {
+            promises.push(window._getDoc(window._doc(window._db, "store", "chunk_" + i)));
+          }
+          return Promise.all(promises).then(function(snaps) {
+            var all = [];
+            snaps.forEach(function(s) {
+              if (s.exists()) all = all.concat(s.data().list || []);
+            });
+            return all.length ? all : null;
+          });
+        } else {
+          // ── Legacy single-doc storage ─────────────────
+          return window._getDoc(window._doc(window._db, "store", "products"))
+            .then(function(snap) {
+              if (snap.exists()) {
+                var prods = snap.data().list || [];
+                return prods.length ? prods : null;
+              }
+              return null;
+            });
+        }
+      })
+      .then(function(prods) {
+        if (prods && prods.length) {
+          _allProducts = prods;
+          try { lsSet("lbm_products", JSON.stringify(prods)); } catch(e){}
+          callback(sortAndReturn(prods.filter(function(x){ return !x.hidden; })));
+        } else {
+          fallbackToJson("no data in Firestore");
+        }
+      })
+      .catch(function(e) { fallbackToJson("Firestore error: " + e.message); });
+  }
+
+  // Handle timing: module scripts can load after DOMContentLoaded
   if (window._firebaseReady) {
     loadFromFirebase();
   } else {
-    // Set a timeout fallback so we never hang forever
-    var loaded = false;
+    var done = false;
     var timer = setTimeout(function() {
-      if (!loaded) {
-        loaded = true;
-        console.warn("Firebase timeout — loading from products.json");
-        fetch("products.json")
-          .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
-          .then(function(data){
-            _allProducts = data;
-            callback(sortAndReturn(data.filter(function(x){ return !x.hidden; })));
-          })
-          .catch(function(){
-            var fb = getProducts();
-            _allProducts = fb;
-            callback(sortAndReturn(fb));
-          });
-      }
-    }, 4000); // wait max 4 seconds for Firebase
-
+      if (!done) { done = true; fallbackToJson("Firebase timeout after 5s"); }
+    }, 5000);
     window.addEventListener("firebaseReady", function() {
-      if (!loaded) {
-        loaded = true;
-        clearTimeout(timer);
-        loadFromFirebase();
-      }
+      if (!done) { done = true; clearTimeout(timer); loadFromFirebase(); }
     }, { once: true });
   }
 }
@@ -1389,7 +1381,6 @@ function searchProducts() { currentPage = 1; applyFilters(); }
 function applyFilters() {
   var wish = getWish();
   var q = (document.getElementById("searchBox") || {value:""}).value.toLowerCase();
-  // Use global cache if available, otherwise getProducts()
   var list = (_allProducts && _allProducts.length)
     ? _allProducts.filter(function(x){ return !x.hidden; })
     : getProducts();

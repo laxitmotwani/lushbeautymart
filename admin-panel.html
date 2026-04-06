@@ -1070,35 +1070,73 @@ var DEFS = [
 
 function getProds() { return lsParse("lbm_products", JSON.parse(JSON.stringify(DEFS))); }
 
-// Load products from Firebase into localStorage on admin startup
+// ── SYNC FROM FIREBASE ON STARTUP ─────────────────────
 function syncFromFirebase() {
   function doSync() {
-    window._getDoc(window._doc(window._db, "store", "products"))
-      .then(function(snap) {
-        if (snap.exists()) {
-          var prods = snap.data().list || [];
-          if (prods.length) {
-            lsSet("lbm_products", JSON.stringify(prods));
-            renderDash();
-            console.log("✅ Admin synced " + prods.length + " products from Firebase");
+    // Try chunked format first
+    window._getDoc(window._doc(window._db, "store", "products_meta"))
+      .then(function(metaSnap) {
+        if (metaSnap.exists()) {
+          var nChunks = metaSnap.data().chunks || 1;
+          var promises = [];
+          for (var i = 0; i < nChunks; i++) {
+            promises.push(window._getDoc(window._doc(window._db, "store", "chunk_" + i)));
           }
+          return Promise.all(promises).then(function(snaps) {
+            var all = [];
+            snaps.forEach(function(s) { if (s.exists()) all = all.concat(s.data().list || []); });
+            return all;
+          });
+        } else {
+          return window._getDoc(window._doc(window._db, "store", "products"))
+            .then(function(snap) { return snap.exists() ? (snap.data().list || []) : []; });
         }
       })
-      .catch(function(e){ console.warn("Sync from Firebase failed:", e); });
+      .then(function(prods) {
+        if (prods && prods.length) {
+          lsSet("lbm_products", JSON.stringify(prods));
+          renderDash();
+          renderProdTable();
+          console.log("✅ Admin synced " + prods.length + " products from Firebase");
+        }
+      })
+      .catch(function(e){ console.warn("Admin sync failed:", e); });
   }
   if (window._firebaseReady) doSync();
   else window.addEventListener("firebaseReady", doSync, { once: true });
 }
-function setProds(p){
+
+// ── SAVE TO FIREBASE IN CHUNKS ────────────────────────
+function setProds(p) {
   lsSet("lbm_products", JSON.stringify(p));
   function saveToCloud() {
     if (!window._firebaseReady) {
       window.addEventListener("firebaseReady", saveToCloud, { once: true });
       return;
     }
-    window._setDoc(window._doc(window._db, "store", "products"), { list: p })
-      .then(function(){ console.log("✅ Saved to cloud"); toast("✅ Saved to cloud!","ok"); })
-      .catch(function(e){ console.error("Cloud save failed", e); toast("⚠️ Cloud save failed — check Firestore rules","err"); });
+    var CHUNK   = 50;
+    var chunks  = [];
+    for (var i = 0; i < p.length; i += CHUNK) chunks.push(p.slice(i, i + CHUNK));
+
+    var writes = chunks.map(function(chunk, i) {
+      return window._setDoc(window._doc(window._db, "store", "chunk_" + i), { list: chunk });
+    });
+    // Also write metadata
+    writes.push(window._setDoc(window._doc(window._db, "store", "products_meta"), {
+      total:   p.length,
+      chunks:  chunks.length,
+      updated: new Date().toISOString()
+    }));
+
+    Promise.all(writes)
+      .then(function(){
+        console.log("✅ Saved " + p.length + " products in " + chunks.length + " chunks");
+        toast("✅ Saved to cloud!","ok");
+      })
+      .catch(function(e){
+        console.error("Cloud save failed", e);
+        toast("⚠️ Cloud save failed","err");
+      });
   }
   saveToCloud();
 }
@@ -1588,7 +1626,7 @@ function logout(){sessionStorage.removeItem("lbm_admin");window.location.href="a
   if(sv.ship)     document.getElementById("s-ship").value     = sv.ship;
   renderDash();
   setInterval(updateBadge, 10000);
-  syncFromFirebase(); // ← load latest products from Firebase on startup
+  syncFromFirebase();
 })();
 
 function addShadeRow(name, img) {
