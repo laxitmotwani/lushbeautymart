@@ -2,130 +2,71 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Upload Products to Firebase — Lush Beauty Mart</title>
+<title>Upload to Firebase — Lush Beauty Mart</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',sans-serif;max-width:620px;margin:50px auto;padding:20px;background:#f9f0ec}
+body{font-family:'Segoe UI',sans-serif;max-width:580px;margin:50px auto;padding:20px;background:#f9f0ec}
 .box{background:#fff;padding:32px;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.1)}
 h2{color:#1c1410;font-size:22px;margin-bottom:8px}
-.sub{color:#8a6a5a;font-size:13px;margin-bottom:20px;line-height:1.6}
-.status{padding:14px 16px;border-radius:6px;margin:16px 0;font-size:14px;display:none;line-height:1.5}
-.ok {background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;display:block}
-.err{background:#ffebee;color:#c62828;border:1px solid #ef9a9a;display:block}
-.info{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;display:block}
-.progress-bar{height:8px;background:#f0e6da;border-radius:4px;margin:12px 0;overflow:hidden}
-.progress-fill{height:100%;background:#c9506a;border-radius:4px;transition:width .3s;width:0%}
-button{background:#c9506a;color:#fff;border:none;padding:14px 28px;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;width:100%;margin-top:8px;transition:.2s}
+p{color:#8a6a5a;font-size:13px;margin-bottom:20px;line-height:1.6}
+.status{padding:14px 16px;border-radius:6px;margin:16px 0;font-size:14px;line-height:1.6}
+.ok{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7}
+.err{background:#ffebee;color:#c62828;border:1px solid #ef9a9a}
+.info{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+.bar{height:10px;background:#f0e6da;border-radius:5px;margin:12px 0;overflow:hidden}
+.fill{height:100%;background:#c9506a;border-radius:5px;transition:width .4s;width:0}
+button{background:#c9506a;color:#fff;border:none;padding:14px;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;width:100%;margin-top:8px;transition:.2s}
 button:hover{background:#b03d57}
 button:disabled{opacity:.5;cursor:not-allowed}
-.log-item{font-size:13px;color:#555;margin-top:6px;padding:4px 0;border-bottom:1px solid #faf0ec}
-.log-item:last-child{border:none}
+.log{font-size:12.5px;color:#666;margin-top:12px;line-height:1.9}
 </style>
 </head>
 <body>
 <div class="box">
   <h2>🔥 Upload Products to Firebase</h2>
-  <p class="sub">Uploads all 448 products from <code>products.json</code> to Firebase Firestore in chunks — so they sync across all browsers worldwide. <strong>Run once only.</strong></p>
-
-  <div class="status info" id="statusEl" style="display:block">⏳ Ready. Click the button below to start.</div>
-  <div class="progress-bar" id="progressBar" style="display:none"><div class="progress-fill" id="progressFill"></div></div>
-
-  <button onclick="doUpload()" id="btn">🔥 Upload All Products to Firebase</button>
-
-  <div id="log" style="margin-top:16px"></div>
+  <p>Uploads all products to Firebase as ONE document (fast, 3-5 seconds). Every browser will then see the same data. <strong>Run once only.</strong></p>
+  <div class="status info" id="st">Ready — click the button below.</div>
+  <div class="bar"><div class="fill" id="fill"></div></div>
+  <button onclick="go()" id="btn">🔥 Upload Products to Firebase Now</button>
+  <div class="log" id="log"></div>
 </div>
-
 <script type="module">
-import { initializeApp }          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, writeBatch, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey:            "AIzaSyC0ewsoKyf1bnsN1eW9j4DMObKPO9EECgo",
-  authDomain:        "lush-beauty-mart.firebaseapp.com",
-  projectId:         "lush-beauty-mart",
-  storageBucket:     "lush-beauty-mart.firebasestorage.app",
-  messagingSenderId: "48725359774",
-  appId:             "1:48725359774:web:0e243059e6f0f2542c0f8f"
-};
-
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-
-function setStatus(msg, type) {
-  const el = document.getElementById("statusEl");
-  el.innerHTML  = msg;
-  el.className  = "status " + type;
-}
-
-function log(msg) {
-  document.getElementById("log").innerHTML +=
-    `<div class="log-item">${msg}</div>`;
-}
-
-function setProgress(pct) {
-  document.getElementById("progressBar").style.display = "block";
-  document.getElementById("progressFill").style.width  = pct + "%";
-}
-
-window.doUpload = async function() {
-  const btn = document.getElementById("btn");
-  btn.disabled = true;
-  btn.textContent = "⏳ Uploading...";
-  setStatus("⏳ Fetching products.json...", "info");
-
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+const db = getFirestore(initializeApp({
+  apiKey:"AIzaSyC0ewsoKyf1bnsN1eW9j4DMObKPO9EECgo",
+  authDomain:"lush-beauty-mart.firebaseapp.com",
+  projectId:"lush-beauty-mart",
+  storageBucket:"lush-beauty-mart.firebasestorage.app",
+  messagingSenderId:"48725359774",
+  appId:"1:48725359774:web:0e243059e6f0f2542c0f8f"
+}));
+function st(msg,cls){const e=document.getElementById("st");e.innerHTML=msg;e.className="status "+cls;}
+function log(msg){document.getElementById("log").innerHTML+="<div>"+msg+"</div>";}
+function prog(p){document.getElementById("fill").style.width=p+"%";}
+window.go=async function(){
+  const btn=document.getElementById("btn");
+  btn.disabled=true; btn.textContent="⏳ Uploading...";
   try {
-    // ── Step 1: Load products.json ────────────────────
-    const res  = await fetch("products.json");
-    if (!res.ok) throw new Error("Cannot load products.json. Make sure the file is deployed alongside this page.");
-    const data = await res.json();
-    if (!Array.isArray(data) || !data.length) throw new Error("products.json is empty or invalid JSON.");
-
-    log(`📦 Found <strong>${data.length}</strong> products`);
-    setStatus(`⏳ Uploading ${data.length} products in chunks...`, "info");
-
-    // ── Step 2: Split into chunks of 50 ──────────────
-    const CHUNK = 50;
-    const chunks = [];
-    for (let i = 0; i < data.length; i += CHUNK) {
-      chunks.push(data.slice(i, i + CHUNK));
-    }
-    log(`🔀 Split into <strong>${chunks.length} chunks</strong> of ${CHUNK} products each`);
-
-    // ── Step 3: Write each chunk as its own document ──
-    // Structure: store/products_meta  → { total, chunks }
-    //            store/chunk_0        → { list: [...50 products] }
-    //            store/chunk_1        → { list: [...50 products] }
-    //            ...
-
-    for (let i = 0; i < chunks.length; i++) {
-      const pct = Math.round(((i) / chunks.length) * 90);
-      setProgress(pct);
-      setStatus(`⏳ Uploading chunk ${i+1} of ${chunks.length}...`, "info");
-      log(`☁️ Chunk ${i+1}/${chunks.length}: ${chunks[i].length} products`);
-
-      await setDoc(doc(db, "store", "chunk_" + i), { list: chunks[i] });
-    }
-
-    // ── Step 4: Write metadata so index.html knows how many chunks ──
-    await setDoc(doc(db, "store", "products_meta"), {
-      total:  data.length,
-      chunks: chunks.length,
-      updated: new Date().toISOString()
-    });
-
-    setProgress(100);
-    setStatus(`✅ Success! <strong>${data.length} products</strong> uploaded in ${chunks.length} chunks. All browsers will now load from Firebase.`, "ok");
-    log(`✅ <strong>Done!</strong> products_meta + ${chunks.length} chunk documents written.`);
-    log(`🌍 Open your store in any browser — products will load from Firebase.`);
-    btn.textContent = "✅ Upload Complete!";
-
+    st("⏳ Loading products.json...","info"); prog(15);
+    const res=await fetch("products.json");
+    if(!res.ok) throw new Error("Cannot load products.json");
+    const data=await res.json();
+    if(!Array.isArray(data)||!data.length) throw new Error("products.json is empty");
+    const kb=Math.round(JSON.stringify(data).length/1024);
+    log("✅ Found <strong>"+data.length+"</strong> products ("+kb+" KB)");
+    prog(40);
+    st("⏳ Saving to Firebase...","info");
+    log("☁️ Writing to Firestore...");
+    await setDoc(doc(db,"store","products"),{list:data});
+    prog(100);
+    st("✅ <strong>Done! "+data.length+" products uploaded.</strong><br>All browsers worldwide will now load from Firebase. You can close this page.","ok");
+    log("🌍 Store syncs across all browsers. Hidden products hidden everywhere.");
+    btn.textContent="✅ Complete!";
   } catch(e) {
-    setStatus(`❌ Error: ${e.message}`, "err");
-    log(`Error: ${e.message}`);
-    console.error(e);
-    btn.disabled  = false;
-    btn.textContent = "🔄 Try Again";
-    setProgress(0);
+    st("❌ "+e.message,"err");
+    log("Error: "+e.message);
+    btn.disabled=false; btn.textContent="🔄 Try Again"; prog(0);
   }
 };
 </script>

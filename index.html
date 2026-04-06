@@ -1310,34 +1310,29 @@ function loadProducts(callback) {
   }
 
   function loadFromFirebase() {
-    // Step 1: read metadata to find chunk count
-    window._getDoc(window._doc(window._db, "store", "products_meta"))
-      .then(function(metaSnap) {
-        if (metaSnap.exists()) {
-          // ── Chunked storage ──────────────────────────
-          var nChunks = metaSnap.data().chunks || 1;
-          var promises = [];
-          for (var i = 0; i < nChunks; i++) {
-            promises.push(window._getDoc(window._doc(window._db, "store", "chunk_" + i)));
-          }
-          return Promise.all(promises).then(function(snaps) {
-            var all = [];
-            snaps.forEach(function(s) {
-              if (s.exists()) all = all.concat(s.data().list || []);
-            });
-            return all.length ? all : null;
-          });
-        } else {
-          // ── Legacy single-doc storage ─────────────────
-          return window._getDoc(window._doc(window._db, "store", "products"))
-            .then(function(snap) {
-              if (snap.exists()) {
-                var prods = snap.data().list || [];
-                return prods.length ? prods : null;
-              }
-              return null;
-            });
+    // Try single "products" doc first (fast), then chunk fallback
+    window._getDoc(window._doc(window._db, "store", "products"))
+      .then(function(snap) {
+        if (snap.exists() && snap.data().list && snap.data().list.length) {
+          return snap.data().list;
         }
+        // Try chunked storage
+        return window._getDoc(window._doc(window._db, "store", "products_meta"))
+          .then(function(metaSnap) {
+            if (!metaSnap.exists()) return null;
+            var nChunks = metaSnap.data().chunks || 1;
+            var promises = [];
+            for (var i = 0; i < nChunks; i++) {
+              promises.push(window._getDoc(window._doc(window._db, "store", "chunk_" + i)));
+            }
+            return Promise.all(promises).then(function(snaps) {
+              var all = [];
+              snaps.forEach(function(s) {
+                if (s.exists()) all = all.concat(s.data().list || []);
+              });
+              return all.length ? all : null;
+            });
+          });
       })
       .then(function(prods) {
         if (prods && prods.length) {
