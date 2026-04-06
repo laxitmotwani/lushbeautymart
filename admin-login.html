@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Login — Lush Beauty Mart</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root{--ink:#1c1410;
+  --rose:#c9506a;
+  --gold:#b8904a;}
+
+  body{font-family:'Jost',sans-serif;
+  min-height:100vh;
+  background:var(--ink);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  overflow:hidden}
+
+  .bg{position:absolute;
+  inset:0;
+  background:radial-gradient(ellipse at 20% 50%,rgba(201,80,106,.15) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(184,144,74,.1) 0%,transparent 50%);
+  pointer-events:none}
+
+  .box{position:relative;
+  z-index:2;
+  width:400px;
+  max-width:92vw;
+  background:rgba(253,247,242,.04);
+  border:1px solid rgba(201,80,106,.2);
+  border-radius:4px;
+  padding:44px 40px;
+  backdrop-filter:blur(16px);
+  box-shadow:0 24px 60px rgba(0,0,0,.5)}
+
+  .logo{text-align:center;
+  margin-bottom:36px}
+
+  .logo .ico{font-size:44px;
+  display:block;
+  margin-bottom:14px}
+
+  .logo h1{font-family:'Cormorant Garamond',serif;
+  font-size:24px;
+  font-weight:600;
+  color:#fff}
+
+  .logo h1 em{font-style:italic;
+  color:var(--rose)}
+
+  .logo p{font-size:11px;
+  letter-spacing:2.5px;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.3);
+  margin-top:5px}
+
+  .err{background:rgba(201,80,106,.12);
+  border:1px solid rgba(201,80,106,.3);
+  color:#f5a0b0;
+  font-size:13px;
+  border-radius:2px;
+  padding:10px 14px;
+  margin-bottom:18px;
+  display:none}
+
+  .err.show{display:block}
+
+  .field{margin-bottom:18px}
+
+  .field label{display:block;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.4);
+  margin-bottom:8px}
+
+  .fw{position:relative}
+
+  .fi{position:absolute;
+  left:14px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:16px;
+  pointer-events:none}
+
+  .field input{width:100%;
+  padding:13px 14px 13px 42px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(201,80,106,.15);
+  border-radius:2px;
+  color:#fff;
+  font-size:14px;
+  font-family:'Jost',sans-serif;
+  outline:none;
+  transition:.25s}
+
+  .field input::placeholder{color:rgba(255,255,255,.25)}
+
+  .field input:focus{border-color:var(--rose);
+  background:rgba(201,80,106,.06)}
+
+  .eye{position:absolute;
+  right:12px;
+  top:50%;
+  transform:translateY(-50%);
+  cursor:pointer;
+  font-size:16px;
+  user-select:none;
+  color:rgba(255,255,255,.3)}
+
+  .btn{width:100%;
+  padding:14px;
+  background:var(--rose);
+  color:#fff;
+  border:none;
+  border-radius:2px;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  font-family:'Jost',sans-serif;
+  transition:.25s;
+  letter-spacing:.5px;
+  margin-top:4px}
+
+  .btn:hover{background:#b03d57}
+  
+  .btn:disabled{opacity:.6;
+  pointer-events:none}
+
+  .hint{margin-top:22px;
+  padding:14px;
+  background:rgba(184,144,74,.06);
+  border:1px solid rgba(184,144,74,.15);
+  border-radius:2px;text-align:center}
+
+  .hint p{font-size:12px;
+  color:rgba(255,255,255,.3);
+  line-height:1.7}
+
+  .hint strong{color:var(--gold)}
+
+  .back{display:block;
+  text-align:center;
+  margin-top:18px;
+  color:rgba(255,255,255,.25);
+  font-size:12.5px;
+  transition:.2s;
+  text-decoration:none}
+
+  .back:hover{color:var(--rose)}
+
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="box">
+  <div class="logo">
+    <span class="ico">💄</span>
+    <h1>Lush <em>Beauty</em> Mart</h1>
+    <p>Admin Control Panel</p>
+  </div>
+  <div class="err" id="err"></div>
+  <div class="field">
+    <label>Username</label>
+    <div class="fw">
+      <span class="fi">👤</span>
+      <input type="text" id="uname" placeholder="Enter username" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+  </div>
+  <div class="field">
+    <label>Password</label>
+    <div class="fw">
+      <span class="fi">🔒</span>
+      <input type="password" id="pw" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+      <span class="eye" id="eyeBtn" onclick="toggleEye()">👁️</span>
+    </div>
+  </div>
+  <button class="btn" id="loginBtn" onclick="doLogin()">Login to Dashboard</button>
+  <div class="hint">
+    </p>
+  </div>
+  <a href="index.html" class="back">← Back to store</a>
+</div>
+<script>
+try {
+  var s = JSON.parse(sessionStorage.getItem("lbm_admin") || "{}");
+  if (s.ok && (Date.now() - s.t) < 28800000) window.location.href = "admin-panel.html";
+} catch(e) {}
+
+function getCreds() {
+  var hardcoded = { u: "admin", p: "lush2025!" };
+  try {
+    var u = localStorage.getItem("admin_user");
+    var p = localStorage.getItem("admin_pass");
+    // Only use localStorage if it matches the hardcoded username
+    if (u && p && u === hardcoded.u) return { u: u, p: p };
+  } catch(e) {}
+  return hardcoded;
+}
+function doLogin() {
+  var u   = document.getElementById("uname").value.trim();
+  var p   = document.getElementById("pw").value;
+  var btn = document.getElementById("loginBtn");
+  var err = document.getElementById("err");
+
+  err.classList.remove("show");
+  if (!u || !p) { showErr("Please enter both username and password."); return; }
+
+  btn.textContent = "Checking...";
+  btn.disabled = true;
+
+  setTimeout(function() {
+    var c = getCreds();
+    if (u === c.u && p === c.p) {
+      sessionStorage.setItem("lbm_admin", JSON.stringify({ ok: true, t: Date.now() }));
+      window.location.href = "admin-panel.html";
+    } else {
+      showErr("Wrong username or password.");
+      document.getElementById("pw").value = "";
+      btn.textContent = "Login to Dashboard";
+      btn.disabled = false;
+    }
+  }, 600);
+}
+
+function showErr(msg) {
+  var e = document.getElementById("err");
+  e.textContent = msg;
+  e.classList.add("show");
+}
+
+function toggleEye() {
+  var inp = document.getElementById("pw");
+  var eye = document.getElementById("eyeBtn");
+  inp.type = inp.type === "password" ? "text" : "password";
+  eye.textContent = inp.type === "password" ? "👁️" : "🙈";
+}
+</script>
+</body>
+</html>

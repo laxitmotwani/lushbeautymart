@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Upload Products to Firebase</title>
+<style>
+body{font-family:sans-serif;max-width:600px;margin:60px auto;padding:20px;background:#f5f5f5}
+.box{background:#fff;padding:30px;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.1)}
+h2{margin-top:0;color:#1c1410}
+.status{padding:14px;border-radius:6px;margin-top:16px;font-size:14px;display:none}
+.ok{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7}
+.err{background:#ffebee;color:#c62828;border:1px solid #ef9a9a}
+.info{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+button{background:#c9506a;color:#fff;border:none;padding:14px 28px;border-radius:6px;font-size:15px;cursor:pointer;width:100%;margin-top:12px}
+button:hover{background:#b03d57}
+button:disabled{opacity:.5;cursor:not-allowed}
+pre{background:#f5f5f5;padding:12px;border-radius:4px;font-size:12px;overflow:auto;max-height:200px}
+</style>
+</head>
+<body>
+<div class="box">
+  <h2>🔥 Upload Products to Firebase</h2>
+  <p>This page uploads all your products from <code>products.json</code> to Firebase Firestore so they sync across all browsers.</p>
+  <p><strong>Run this once only.</strong></p>
+  <div class="status info" id="statusEl">Ready to upload.</div>
+  <button onclick="doUpload()" id="btn">⬆️ Upload All Products to Firebase</button>
+  <div id="log" style="margin-top:16px"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0ewsoKyf1bnsN1eW9j4DMObKPO9EECgo",
+  authDomain: "lush-beauty-mart.firebaseapp.com",
+  projectId: "lush-beauty-mart",
+  storageBucket: "lush-beauty-mart.firebasestorage.app",
+  messagingSenderId: "48725359774",
+  appId: "1:48725359774:web:0e243059e6f0f2542c0f8f"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+function setStatus(msg, type) {
+  var el = document.getElementById("statusEl");
+  el.textContent = msg;
+  el.className = "status " + type;
+  el.style.display = "block";
+}
+
+function log(msg) {
+  var el = document.getElementById("log");
+  el.innerHTML += "<div style='font-size:13px;color:#555;margin-top:6px'>" + msg + "</div>";
+}
+
+window.doUpload = async function() {
+  var btn = document.getElementById("btn");
+  btn.disabled = true;
+  setStatus("⏳ Fetching products.json...", "info");
+  try {
+    var res = await fetch("products.json");
+    if (!res.ok) throw new Error("Could not load products.json — make sure it is in the same folder");
+    var data = await res.json();
+    if (!Array.isArray(data) || !data.length) throw new Error("products.json is empty or invalid");
+    setStatus("⏳ Uploading " + data.length + " products to Firebase...", "info");
+    log("📦 Found " + data.length + " products");
+    log("☁️ Saving to Firestore...");
+    await setDoc(doc(db, "store", "products"), { list: data });
+    setStatus("✅ Success! " + data.length + " products uploaded to Firebase. All browsers will now sync.", "ok");
+    log("✅ Done! Now redeploy your site and open it in any browser.");
+    btn.textContent = "✅ Upload Complete!";
+  } catch(e) {
+    setStatus("❌ Error: " + e.message, "err");
+    log("Error details: " + e.message);
+    btn.disabled = false;
+    btn.textContent = "⬆️ Try Again";
+  }
+};
+</script>
+</body>
+</html>
