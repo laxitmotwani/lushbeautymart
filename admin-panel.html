@@ -788,7 +788,7 @@ overflow-x:hidden}
 
 
           <div class="fg full">
-            <label>Product Photos (up to 2)</label>
+            <label>Product Photos (up to 4)</label>
             <small>Upload to <a href="https://imgbb.com" target="_blank" style="color:var(--rose);font-weight:600">imgbb.com</a> → change dropdown to <strong>"Direct links"</strong> → copy link starting with <code style="background:var(--sand);padding:1px 4px;border-radius:2px">https://i.ibb.co/...</code> → paste below</small>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px">
               <div>
@@ -808,6 +808,18 @@ overflow-x:hidden}
             </div>
           </div>
         </div>
+        <div>
+                <div style="font-size:12px;font-weight:600;color:var(--warm);margin-bottom:6px">📷 Photo 3 (optional)</div>
+                <input type="text" id="f-image3" placeholder="https://i.ibb.co/..." oninput="previewImg(3)" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:2px;font-size:13px;font-family:'Jost',sans-serif;outline:none;background:var(--cream);color:var(--ink);transition:.2s">
+                <img id="img-preview3" src="" alt="" style="width:100%;max-height:160px;object-fit:contain;display:none;margin-top:8px;border:1px solid var(--border);border-radius:3px">
+                <button type="button" class="btn btn-danger btn-sm" id="img-clear3" onclick="clearImg(3)" style="display:none;margin-top:6px">✕ Remove</button>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:600;color:var(--warm);margin-bottom:6px">📷 Photo 4 (optional)</div>
+                <input type="text" id="f-image4" placeholder="https://i.ibb.co/..." oninput="previewImg(4)" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:2px;font-size:13px;font-family:'Jost',sans-serif;outline:none;background:var(--cream);color:var(--ink);transition:.2s">
+                <img id="img-preview4" src="" alt="" style="width:100%;max-height:160px;object-fit:contain;display:none;margin-top:8px;border:1px solid var(--border);border-radius:3px">
+                <button type="button" class="btn btn-danger btn-sm" id="img-clear4" onclick="clearImg(4)" style="display:none;margin-top:6px">✕ Remove</button>
+              </div>
         <div class="form-actions">
           <button class="btn btn-rose" onclick="saveProduct()">💾 Save Product</button>
           <button class="btn btn-ghost" onclick="clearForm()">✕ Clear</button>
@@ -1306,6 +1318,10 @@ function editProd(id) {
   if (f2) f2.value = p.image2 || "";
   if (p.image)  previewImg(1); else clearImg(1);
   if (f2 && p.image2) previewImg(2); else clearImg(2);
+  var f3 = document.getElementById("f-image3");
+  if (f3) { f3.value = p.image3 || ""; if (p.image3) previewImg(3); else clearImg(3); }
+  var f4 = document.getElementById("f-image4");
+  if (f4) { f4.value = p.image4 || ""; if (p.image4) previewImg(4); else clearImg(4); }
   document.getElementById("formPageTitle").textContent = "Edit Product";
   document.getElementById("formHeading").textContent   = "✏️ Editing: " + p.name;
 }
@@ -1335,13 +1351,13 @@ function saveProduct() {
   if (eid) {
     for (var i=0;i<prods.length;i++) {
       if (prods[i].id==eid) {
-        prods[i]={id:prods[i].id,name:name,brand:brand,cat:cat,price:price,orig:orig,badge:badge,desc:desc,image:image,stock:stock,hidden:hidden};
+        prods[i]={id:prods[i].id,name:name,brand:brand,prods[i]={id:prods[i].id,name:name,brand:brand,cat:cat,price:price,orig:orig,badge:badge,desc:desc,image:image,image2:image2,image3:(document.getElementById("f-image3")||{value:""}).value.trim(),image4:(document.getElementById("f-image4")||{value:""}).value.trim(),shades:shades,stock:stock,hidden:hidden};cat:cat,price:price,orig:orig,badge:badge,desc:desc,image:image,stock:stock,hidden:hidden};
         break;
       }
     }
     toast("Product updated!","ok");
   } else {
-    prods.push({id:Date.now(),name:name,brand:brand,cat:cat,price:price,orig:orig,badge:badge,desc:desc,image:image,stock:stock,hidden:hidden});
+    prods.push({id:Date.now(),name:name,brand:brand,cat:cat,price:price,orig:orig,badge:badge,desc:desc,image:image,image2:image2,image3:(document.getElementById("f-image3")||{value:""}).value.trim(),image4:(document.getElementById("f-image4")||{value:""}).value.trim(),shades:shades,stock:stock,hidden:hidden});
     toast("Product added!","ok");
   }
   setProds(prods);
