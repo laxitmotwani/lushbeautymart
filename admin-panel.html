@@ -937,7 +937,7 @@ overflow-x:hidden}
           <option>Nailcare</option>
           <option>Skincare</option>
           <option>Tumbler</option>
-          <option>Others</option>
+          <option>Other</option>
         </select>
       </div>
       <div class="fg">
@@ -982,7 +982,7 @@ overflow-x:hidden}
           <option value="">— All Products —</option>
           <option>Bags</option><option>Bodycare</option><option>Fragrance</option>
           <option>Haircare</option><option>Jewellery and Accessories</option>
-          <option>Makeup</option><option>Nailcare</option><option>Others</option>
+          <option>Makeup</option><option>Nailcare</option><option>Other</option>
           <option>Skincare</option><option>Tumbler</option>
         </select>
       </div>
@@ -1351,7 +1351,7 @@ function saveProduct() {
   if (eid) {
     for (var i=0;i<prods.length;i++) {
       if (prods[i].id==eid) {
-        prods[i]={id:prods[i].id,name:name,brand:brand,prods[i]={id:prods[i].id,name:name,brand:brand,cat:cat,price:price,orig:orig,badge:badge,desc:desc,image:image,image2:image2,image3:(document.getElementById("f-image3")||{value:""}).value.trim(),image4:(document.getElementById("f-image4")||{value:""}).value.trim(),shades:shades,stock:stock,hidden:hidden};cat:cat,price:price,orig:orig,badge:badge,desc:desc,image:image,stock:stock,hidden:hidden};
+        prods[i]={id:prods[i].id,name:name,brand:brand,cat:cat,price:price,orig:orig,badge:badge,desc:desc,image:image,image2:image2,image3:(document.getElementById("f-image3")||{value:""}).value.trim(),image4:(document.getElementById("f-image4")||{value:""}).value.trim(),shades:shades,stock:stock,hidden:hidden};
         break;
       }
     }
